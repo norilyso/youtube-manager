@@ -86,7 +86,9 @@
             loadingMsg.style.display = 'flex';
             try {
                 // GETリクエストに合言葉（token）を含める
-                const res = await fetch(`${GAS_URL}?token=${SECRET_TOKEN}`);
+                   const res = await fetch(`${GAS_URL}?token=${SECRET_TOKEN}`, {
+                       redirect: 'follow'
+                   });
                 const data = await res.json();
                 
                 if (data.error) {
