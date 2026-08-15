@@ -17,6 +17,9 @@
                 </h1>
                 <p class="text-indigo-100 mt-1 text-sm sm:text-base">スプレッドシートのデータを条件で絞り込み</p>
             </div>
+            <a href="#" target="_blank" class="bg-indigo-800 hover:bg-indigo-900 text-white text-xs px-4 py-2 rounded-xl font-medium flex items-center gap-2 transition shadow-sm">
+                <i data-lucide="table" class="w-4 h-4"></i> データ編集(スプシ)
+            </a>
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -55,7 +58,10 @@
                     <span class="text-sm font-medium text-slate-600">検索結果: <strong id="result-count" class="text-indigo-600">0</strong> 件</span>
                     <span id="loading-msg" class="text-xs text-indigo-500 flex items-center gap-1"><i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>読込中...</span>
                 </div>
+                
                 <div id="video-list" class="space-y-4"></div>
+                
+                <div id="pagination-controls" class="flex justify-center items-center gap-4 mt-6"></div>
             </div>
         </div>
     </div>
@@ -68,12 +74,16 @@
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbyePjHRyAt3gLQh5N5-M8qZYGk4Z0PPuyaeuqdLHj56hR0D5eBRMEkX_x4DA35cPJM/exec';
 
         let videos = [];
+        let currentPage = 1;
+        const itemsPerPage = 10;
+
         const filterYear = document.getElementById('filter-year');
         const filterDate = document.getElementById('filter-date');
         const filterLocation = document.getElementById('filter-location');
         const filterPosition = document.getElementById('filter-position');
         const videoListEl = document.getElementById('video-list');
         const loadingMsg = document.getElementById('loading-msg');
+        const paginationEl = document.getElementById('pagination-controls');
 
         async function fetchVideos() {
             loadingMsg.style.display = 'flex';
@@ -81,19 +91,18 @@
                 const res = await fetch(GAS_URL);
                 videos = await res.json();
                 
-                // 空行を除外
                 videos = videos.filter(v => v.date); 
                 
-                // ★ 日付のズレ＆長さ問題を一発で解決する魔法の処理
                 videos.forEach(v => {
                     if (v.date) {
                         const d = new Date(v.date);
                         if (!isNaN(d.getTime())) {
-                            // 日本時間に変換して YYYY-MM-DD 形式に整える
                             const y = d.getFullYear();
                             const m = String(d.getMonth() + 1).padStart(2, '0');
                             const day = String(d.getDate()).padStart(2, '0');
                             v.date = `${y}-${m}-${day}`;
+                        } else if (typeof v.date === 'string' && v.date.includes('T')) {
+                            v.date = v.date.split('T')[0];
                         }
                     }
                 });
@@ -135,6 +144,12 @@
             return null;
         }
 
+        window.changePage = function(delta) {
+            currentPage += delta;
+            renderVideos();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
         function renderVideos() {
             const fYear = filterYear.value;
             const fDate = filterDate.value;
@@ -144,7 +159,6 @@
             const filtered = videos.filter(v => {
                 if(!v.date) return false;
                 if (fYear && v.date.split('-')[0] !== fYear) return false;
-                // ★ 綺麗になった日付同士で比較するので確実にヒットする
                 if (fDate && v.date !== fDate) return false;
                 if (fLoc && v.location !== fLoc) return false;
                 if (fPos && v.position !== fPos) return false;
@@ -156,40 +170,44 @@
 
             if (filtered.length === 0) {
                 videoListEl.innerHTML = `<div class="bg-white p-8 rounded-2xl text-center text-slate-400 border border-slate-100"><i data-lucide="frown" class="w-10 h-10 mx-auto mb-2 opacity-50"></i><p class="text-sm">データが見つかりません</p></div>`;
+                paginationEl.innerHTML = '';
                 lucide.createIcons();
                 return;
             }
 
-            videoListEl.innerHTML = filtered.map(v => {
+            const totalPages = Math.ceil(filtered.length / itemsPerPage);
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const currentItems = filtered.slice(startIndex, endIndex);
+
+            videoListEl.innerHTML = currentItems.map(v => {
                 const videoId = getYouTubeId(v.url);
                 const thumbUrl = videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : '';
 
-                // ★ undefinedが出る原因だった <h3>タイトル</h3> の部分を完全に削除したよ！
                 return `
                 <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col sm:flex-row gap-5 transition hover:shadow-md items-center">
                     
-                    <!-- サムネイル画像 -->
-                    <div class="relative w-full sm:w-48 aspect-video flex-shrink-0 rounded-xl overflow-hidden bg-slate-900 shadow-inner group">
+                    <!-- ★ サムネイル部分を<a>タグに変更してクリック可能に！ -->
+                    <a href="${v.url}" target="_blank" class="relative w-full sm:w-48 aspect-video flex-shrink-0 rounded-xl overflow-hidden bg-slate-900 shadow-inner group block cursor-pointer">
                         ${videoId 
-                            ? `<img src="${thumbUrl}" alt="Thumbnail" class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition">
-                               <div class="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/0 transition duration-300">
-                                  <i data-lucide="play" class="w-10 h-10 text-white drop-shadow-md"></i>
+                            ? `<img src="${thumbUrl}" alt="Thumbnail" class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition group-hover:scale-105 duration-300">
+                               <div class="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/10 transition duration-300">
+                                  <i data-lucide="play" class="w-10 h-10 text-white drop-shadow-md transform group-hover:scale-110 transition duration-300"></i>
                                </div>` 
                             : `<div class="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-100"><i data-lucide="image-off" class="w-6 h-6 mb-1"></i><span class="text-[10px]">URLエラー</span></div>`}
-                    </div>
+                    </a>
 
                     <!-- 情報とボタン -->
                     <div class="flex-grow flex flex-col sm:flex-row justify-between items-start sm:items-center w-full gap-4">
                         <div class="space-y-2.5">
-                            
-                            <!-- 備考（あれば表示） -->
-                            ${v.note ? `<div class="text-base sm:text-lg font-bold text-slate-900">${v.note}</div>` : ''}                            
+                            ${v.note ? `<div class="text-base sm:text-lg font-bold text-slate-900">${v.note}</div>` : ''}
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="bg-indigo-50 text-indigo-700 font-semibold text-xs px-2.5 py-1 rounded-lg border border-indigo-100">${v.date}</span>
                                 <span class="bg-slate-50 text-slate-600 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1 border border-slate-200"><i data-lucide="map-pin" class="w-3 h-3"></i>${v.location}</span>
                             </div>
-                            
-                            <!-- 位置 -->
                             ${v.position ? `<div class="text-sm font-bold text-emerald-600 flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-lg inline-flex border border-emerald-100"><i data-lucide="user" class="w-4 h-4"></i>位置: ${v.position}</div>` : ''}
                         </div>
                         
@@ -200,12 +218,32 @@
                 </div>
                 `;
             }).join('');
+            
+            if (totalPages > 1) {
+                paginationEl.innerHTML = `
+                    <button onclick="changePage(-1)" ${currentPage === 1 ? 'disabled class="opacity-50 cursor-not-allowed bg-slate-200 text-slate-500 font-medium px-4 py-2 rounded-xl text-sm"' : 'class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-medium px-4 py-2 rounded-xl text-sm transition"'}>
+                        <i data-lucide="chevron-left" class="w-4 h-4 inline"></i> 前へ
+                    </button>
+                    <span class="text-sm font-medium text-slate-600 px-2">${currentPage} / ${totalPages} ページ</span>
+                    <button onclick="changePage(1)" ${currentPage === totalPages ? 'disabled class="opacity-50 cursor-not-allowed bg-slate-200 text-slate-500 font-medium px-4 py-2 rounded-xl text-sm"' : 'class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-medium px-4 py-2 rounded-xl text-sm transition"'}>
+                        次へ <i data-lucide="chevron-right" class="w-4 h-4 inline"></i>
+                    </button>
+                `;
+            } else {
+                paginationEl.innerHTML = '';
+            }
+
             lucide.createIcons();
         }
 
-        [filterYear, filterDate, filterLocation, filterPosition].forEach(el => el.addEventListener('change', renderVideos));
+        [filterYear, filterDate, filterLocation, filterPosition].forEach(el => el.addEventListener('change', () => {
+            currentPage = 1;
+            renderVideos();
+        }));
+        
         document.getElementById('reset-filters').addEventListener('click', () => {
             filterYear.value = filterDate.value = filterLocation.value = filterPosition.value = '';
+            currentPage = 1;
             renderVideos();
         });
 
