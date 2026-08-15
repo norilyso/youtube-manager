@@ -155,6 +155,20 @@
         }
 
         function updateFilterOptions() {
+            // ★カテゴリーの並び順のルール（配列）を定義する
+            const categoryOrder = ['稽古', '本番', '所望踊り', '囃子変遷'];
+
+            // カテゴリー一覧を取得して、上のルールの順番に並び替える
+            let categories = [...new Set(videos.map(v => v.category).filter(x => x))];
+            categories.sort((a, b) => {
+                let indexA = categoryOrder.indexOf(a);
+                let indexB = categoryOrder.indexOf(b);
+                // ルールにない新しい言葉（その他など）が来たら一番最後にする
+                if (indexA === -1) indexA = 999;
+                if (indexB === -1) indexB = 999;
+                return indexA - indexB;
+            });
+
             const getUnique = key => [...new Set(videos.map(v => v[key]).filter(x => x))].sort();
             const years = [...new Set(videos.map(v => v.date ? v.date.split('-')[0] : null).filter(x => x))].sort().reverse();
             
@@ -163,8 +177,8 @@
                 el.innerHTML = `<option value="">すべての${prefix}</option>` + opts.map(o => `<option value="${o}" ${o === current ? 'selected' : ''}>${o}${prefix==='年'?'年':''}</option>`).join('');
             };
 
-            // ★カテゴリーもセレクトボックスに反映
-            fillSelect(filterCategory, getUnique('category'), 'カテゴリー');
+            // ★ここで並び替えたcategoriesを渡す
+            fillSelect(filterCategory, categories, 'カテゴリー');
             fillSelect(filterYear, years, '年');
             fillSelect(filterLocation, getUnique('location'), '場所');
             fillSelect(filterPosition, getUnique('position'), '位置');
