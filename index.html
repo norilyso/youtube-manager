@@ -85,10 +85,10 @@
         async function fetchVideos() {
             loadingMsg.style.display = 'flex';
             try {
-                // GETリクエストに合言葉（token）を含める
-                   const res = await fetch(`${GAS_URL}?token=${SECRET_TOKEN}`, {
-                       redirect: 'follow'
-                   });
+                // ★ LINEブラウザ対策の redirect: 'follow' を追加
+                const res = await fetch(`${GAS_URL}?token=${SECRET_TOKEN}`, {
+                    redirect: 'follow'
+                });
                 const data = await res.json();
                 
                 if (data.error) {
@@ -188,7 +188,7 @@
             const endIndex = startIndex + itemsPerPage;
             const currentItems = filtered.slice(startIndex, endIndex);
 
-            // ★スマホかPCかの判定（画面幅768px以下をスマホとする）
+            // スマホかPCかの判定（画面幅768px以下をスマホとする）
             const isMobile = window.innerWidth <= 768;
             const targetAttr = isMobile ? '_self' : '_blank';
 
@@ -199,7 +199,7 @@
                 return `
                 <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col sm:flex-row gap-5 transition hover:shadow-md items-center">
                     
-                    <!-- サムネイル（target属性を動的設定） -->
+                    <!-- サムネイル -->
                     <a href="${v.url}" target="${targetAttr}" class="relative w-full sm:w-48 aspect-video flex-shrink-0 rounded-xl overflow-hidden bg-slate-900 shadow-inner group block cursor-pointer">
                         ${videoId 
                             ? `<img src="${thumbUrl}" alt="Thumbnail" class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition group-hover:scale-105 duration-300">
@@ -211,36 +211,36 @@
 
                     <!-- 情報とボタン -->
                     <div class="flex-grow flex flex-col sm:flex-row justify-between items-start w-full gap-4">
-                        <div class="space-y-3 w-full">
+                        <div class="space-y-2 w-full">
                             
-                            <!-- 上段：場所と日付（一番大きく、同じ大きさ） -->
-                            <div class="flex flex-wrap items-center gap-x-6 gap-y-2">
-                                <span class="text-2xl sm:text-3xl font-bold text-slate-800 flex items-center gap-1.5">
-                                    <i data-lucide="map-pin" class="w-7 h-7 text-indigo-500"></i>
+                            <!-- 上段：場所と日付（中くらいのサイズに調整） -->
+                            <div class="flex flex-wrap items-center gap-x-5 gap-y-1">
+                                <span class="text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-1.5">
+                                    <i data-lucide="map-pin" class="w-5 h-5 text-indigo-500"></i>
                                     ${v.location}
                                 </span>
-                                <span class="text-2xl sm:text-3xl font-bold text-indigo-700">
+                                <span class="text-lg sm:text-xl font-bold text-indigo-700">
                                     ${v.date}
                                 </span>
                             </div>
 
-                            <!-- 中段：位置と備考（位置は若干小さめ、備考はその右に小さめ） -->
-                            <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                            <!-- 中段：位置と備考（場所・日付とバランスを合わせた中サイズ） -->
+                            <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 mt-1">
                                 ${v.position ? `
-                                    <span class="text-lg sm:text-xl font-bold text-emerald-600 flex items-center gap-1">
-                                        <i data-lucide="user" class="w-5 h-5"></i>
+                                    <span class="text-base sm:text-lg font-bold text-emerald-600 flex items-center gap-1">
+                                        <i data-lucide="user" class="w-4 h-4"></i>
                                         ${v.position}
                                     </span>
                                 ` : ''}
                                 ${v.note ? `
-                                    <span class="text-sm text-slate-500 font-medium">
+                                    <span class="text-base sm:text-lg text-slate-600 font-medium">
                                         ${v.note}
                                     </span>
                                 ` : ''}
                             </div>
                         </div>
                         
-                        <!-- 再生ボタン（target属性を動的設定） -->
+                        <!-- 再生ボタン -->
                         <a href="${v.url}" target="${targetAttr}" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-6 py-3 rounded-xl font-medium flex items-center gap-2 transition shadow-sm w-full sm:w-auto justify-center flex-shrink-0 sm:self-center mt-2 sm:mt-0">
                             <i data-lucide="play-circle" class="w-5 h-5"></i> 再生
                         </a>
