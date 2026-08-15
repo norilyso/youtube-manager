@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>宝船稽古動画マネージャー</title>
+    <title>宝船YouTube稽古動画マネージャー</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -27,6 +27,11 @@
                         絞り込み
                     </h2>
                     <div class="space-y-4">
+                        <!-- ★カテゴリーフィルター追加 -->
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">カテゴリー</label>
+                            <select id="filter-category" class="w-full border border-slate-200 rounded-xl p-2.5 text-sm bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none"><option value="">すべてのカテゴリー</option></select>
+                        </div>
                         <div>
                             <label class="block text-xs font-medium text-slate-500 mb-1">年</label>
                             <select id="filter-year" class="w-full border border-slate-200 rounded-xl p-2.5 text-sm bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none"><option value="">すべての年</option></select>
@@ -52,9 +57,7 @@
             <div class="md:col-span-3 space-y-4">
                 <div class="flex justify-between items-center bg-white px-5 py-3 rounded-2xl shadow-sm border border-slate-100">
                     <span class="text-sm font-medium text-slate-600">検索結果: <strong id="result-count" class="text-indigo-600">0</strong> 件</span>
-                    <span id="loading-msg" class="text-xs text-indigo-500 flex items-center gap-1 transition-all duration-300">
-                        <!-- ここに状態が表示されます -->
-                    </span>
+                    <span id="loading-msg" class="text-xs text-indigo-500 flex items-center gap-1 transition-all duration-300"></span>
                 </div>
                 
                 <div id="video-list" class="space-y-4"></div>
@@ -71,14 +74,13 @@
         // ★GASのURLと合言葉★
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbyePjHRyAt3gLQh5N5-M8qZYGk4Z0PPuyaeuqdLHj56hR0D5eBRMEkX_x4DA35cPJM/exec';
         const SECRET_TOKEN = 'nori-keiko-2026';
-        
-        // キャッシュ用のキー名
         const CACHE_KEY = 'nori_youtube_videos_cache';
 
         let videos = [];
         let currentPage = 1;
         const itemsPerPage = 10;
 
+        const filterCategory = document.getElementById('filter-category');
         const filterYear = document.getElementById('filter-year');
         const filterDate = document.getElementById('filter-date');
         const filterLocation = document.getElementById('filter-location');
@@ -90,7 +92,6 @@
         async function fetchVideos() {
             loadingMsg.style.display = 'flex';
             
-            // 1. まずローカルのキャッシュを探して、あれば一瞬で表示する
             const cachedData = localStorage.getItem(CACHE_KEY);
             if (cachedData) {
                 videos = JSON.parse(cachedData);
@@ -104,7 +105,6 @@
             }
 
             try {
-                // 2. 裏側でGASから最新データを取得（LINE対策の redirect: 'follow' 入り）
                 const res = await fetch(`${GAS_URL}?token=${SECRET_TOKEN}`, {
                     redirect: 'follow'
                 });
@@ -131,15 +131,13 @@
                     }
                 });
                 
-                // 3. 取得したデータと今のデータが違うか比較して、最新なら更新する
                 if (JSON.stringify(videos) !== JSON.stringify(fetchedVideos)) {
                     videos = fetchedVideos;
-                    localStorage.setItem(CACHE_KEY, JSON.stringify(videos)); // キャッシュを上書き保存
+                    localStorage.setItem(CACHE_KEY, JSON.stringify(videos));
                     updateFilterOptions();
                     renderVideos();
                 }
                 
-                // 読み込み完了のサインを出して、2秒後に消す
                 loadingMsg.innerHTML = '<i data-lucide="check" class="w-4 h-4 text-emerald-500"></i><span class="text-emerald-600">最新です</span>';
                 lucide.createIcons();
                 setTimeout(() => { loadingMsg.style.opacity = '0'; }, 2000);
@@ -165,6 +163,8 @@
                 el.innerHTML = `<option value="">すべての${prefix}</option>` + opts.map(o => `<option value="${o}" ${o === current ? 'selected' : ''}>${o}${prefix==='年'?'年':''}</option>`).join('');
             };
 
+            // ★カテゴリーもセレクトボックスに反映
+            fillSelect(filterCategory, getUnique('category'), 'カテゴリー');
             fillSelect(filterYear, years, '年');
             fillSelect(filterLocation, getUnique('location'), '場所');
             fillSelect(filterPosition, getUnique('position'), '位置');
@@ -190,6 +190,7 @@
         };
 
         function renderVideos() {
+            const fCat = filterCategory.value;
             const fYear = filterYear.value;
             const fDate = filterDate.value;
             const fLoc = filterLocation.value;
@@ -197,6 +198,7 @@
 
             const filtered = videos.filter(v => {
                 if(!v.date) return false;
+                if (fCat && v.category !== fCat) return false;
                 if (fYear && v.date.split('-')[0] !== fYear) return false;
                 if (fDate && v.date !== fDate) return false;
                 if (fLoc && v.location !== fLoc) return false;
@@ -222,18 +224,21 @@
             const endIndex = startIndex + itemsPerPage;
             const currentItems = filtered.slice(startIndex, endIndex);
 
-            // スマホかPCかの判定（画面幅768px以下をスマホとする）
             const isMobile = window.innerWidth <= 768;
             const targetAttr = isMobile ? '_self' : '_blank';
 
             videoListEl.innerHTML = currentItems.map(v => {
                 const videoId = getYouTubeId(v.url);
                 const thumbUrl = videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : '';
+                
+                // ★カテゴリーの色分け（通常稽古以外は目立たせる）
+                const categoryBadgeStr = v.category === '通常稽古' 
+                    ? `<span class="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">${v.category}</span>`
+                    : `<span class="text-xs font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">${v.category}</span>`;
 
                 return `
                 <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col sm:flex-row gap-5 transition hover:shadow-md items-center">
                     
-                    <!-- サムネイル -->
                     <a href="${v.url}" target="${targetAttr}" class="relative w-full sm:w-48 aspect-video flex-shrink-0 rounded-xl overflow-hidden bg-slate-900 shadow-inner group block cursor-pointer">
                         ${videoId 
                             ? `<img src="${thumbUrl}" alt="Thumbnail" class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition group-hover:scale-105 duration-300">
@@ -243,12 +248,12 @@
                             : `<div class="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-100"><i data-lucide="image-off" class="w-6 h-6 mb-1"></i><span class="text-[10px]">URLエラー</span></div>`}
                     </a>
 
-                    <!-- 情報とボタン -->
                     <div class="flex-grow flex flex-col sm:flex-row justify-between items-start w-full gap-4">
                         <div class="space-y-2 w-full">
                             
-                            <!-- 上段：場所と日付（中くらいのサイズに調整） -->
-                            <div class="flex flex-wrap items-center gap-x-5 gap-y-1">
+                            <!-- 上段：カテゴリー、場所、日付 -->
+                            <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+                                ${categoryBadgeStr}
                                 <span class="text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-1.5">
                                     <i data-lucide="map-pin" class="w-5 h-5 text-indigo-500"></i>
                                     ${v.location}
@@ -258,7 +263,7 @@
                                 </span>
                             </div>
 
-                            <!-- 中段：位置と備考（場所・日付とバランスを合わせた中サイズ） -->
+                            <!-- 中段：位置と備考 -->
                             <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 mt-1">
                                 ${v.position ? `
                                     <span class="text-base sm:text-lg font-bold text-emerald-600 flex items-center gap-1">
@@ -274,7 +279,6 @@
                             </div>
                         </div>
                         
-                        <!-- 再生ボタン -->
                         <a href="${v.url}" target="${targetAttr}" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-6 py-3 rounded-xl font-medium flex items-center gap-2 transition shadow-sm w-full sm:w-auto justify-center flex-shrink-0 sm:self-center mt-2 sm:mt-0">
                             <i data-lucide="play-circle" class="w-5 h-5"></i> 再生
                         </a>
@@ -300,18 +304,18 @@
             lucide.createIcons();
         }
 
-        [filterYear, filterDate, filterLocation, filterPosition].forEach(el => el.addEventListener('change', () => {
+        const filterElements = [filterCategory, filterYear, filterDate, filterLocation, filterPosition];
+        filterElements.forEach(el => el.addEventListener('change', () => {
             currentPage = 1;
             renderVideos();
         }));
         
         document.getElementById('reset-filters').addEventListener('click', () => {
-            filterYear.value = filterDate.value = filterLocation.value = filterPosition.value = '';
+            filterElements.forEach(el => el.value = '');
             currentPage = 1;
             renderVideos();
         });
 
-        // 画面サイズが変わった時（スマホ縦横切り替え等）にリンクのtargetを再評価するため再描画
         window.addEventListener('resize', () => {
             renderVideos();
         });
