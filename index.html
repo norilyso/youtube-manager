@@ -228,6 +228,15 @@
             const getUnique = key => [...new Set(videos.map(v => v[key]).filter(x => x))].sort();
             const years = [...new Set(videos.map(v => v.date ? v.date.split('-')[0] : null).filter(x => x))].sort().reverse();
             
+            // ★位置のカスタマイズ（「正面」を一番上にする）
+            let positions = getUnique('position');
+            const firstPos = '正面';
+            
+            if (positions.includes(firstPos)) {
+                // リストの中に「正面」があったら一旦削除して、配列の「先頭」に追加する
+                positions = positions.filter(p => p !== firstPos);
+                positions.unshift(firstPos);
+            }
             const fillSelect = (el, opts, prefix) => {
                 const current = el.value;
                 el.innerHTML = `<option value="">すべての${prefix}</option>` + opts.map(o => `<option value="${o}" ${o === current ? 'selected' : ''}>${o}${prefix==='年'?'年':''}</option>`).join('');
@@ -236,7 +245,7 @@
             fillSelect(filterCategory, categories, 'カテゴリー');
             fillSelect(filterYear, years, '年');
             fillSelect(filterLocation, getUnique('location'), '場所');
-            fillSelect(filterPosition, getUnique('position'), '位置');
+            fillSelect(filterPosition, positions, '位置');
         }
 
         function getYouTubeId(url) {
