@@ -59,7 +59,7 @@
                         <!-- ★シークレットパスワード入力欄 -->
                         <div class="pt-4 border-t border-slate-100">
                             <label class="block text-xs font-medium text-slate-400 mb-1 flex items-center gap-1">
-                                <i data-lucide="lock" class="w-3 h-3"></i> 秘密の合言葉 (任意)
+                                <i data-lucide="lock" class="w-3 h-3"></i> パスワード (任意)
                             </label>
                             <input type="password" id="secret-pass" placeholder="限定解除パス" class="w-full border border-slate-200 rounded-xl p-2 text-sm bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                         </div>
@@ -149,10 +149,11 @@
                     return;
                 }
                 
+                let fetchedVideos = data.filter(v => v.date); 
+
                 // --- ここから追加：アンロック演出 ---
                 // ★ 取得したデータの中に隠しカテゴリーがあるかチェック
-                const TARGET_CATEGORY = 'アーカイブ'; // ※のりの環境の隠しカテゴリー名に合わせる！
-                const hasSecret = fetchedVideos.some(v => v.category === TARGET_CATEGORY);
+                const hasSecret = fetchedVideos.some(v => v.isSecret === true);
                 
                 const headerEl = document.getElementById('main-header');
                 const unlockBadge = document.getElementById('unlock-badge');
@@ -172,8 +173,6 @@
                     passInput.classList.remove('border-amber-500', 'bg-amber-50', 'text-amber-700');
                 }
                 // --- ここまで追加 ---
-                
-                let fetchedVideos = data.filter(v => v.date); 
                 
                 // --- 以下、既存のコードと同じ ---
                 fetchedVideos.forEach(v => {
