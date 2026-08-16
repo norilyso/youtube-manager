@@ -175,7 +175,7 @@
 
         function updateFilterOptions() {
             // カテゴリーの表示順ルール
-            const categoryOrder = ['稽古', '所望踊り確認', '本番', 'DVD・ビデオ'];
+            const categoryOrder = ['稽古', '所望踊り確認', '本番', '囃子変遷', 'アーカイブ'];
             
             let categories = [...new Set(videos.map(v => v.category).filter(x => x))];
             categories.sort((a, b) => {
@@ -266,7 +266,7 @@
                 if (v.category !== '稽古') {
                     categoryBadgeStr = `<span class="text-xs font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">${v.category}</span>`;
                 }
-                if (v.category === 'DVD・ビデオ') {
+                if (v.category === 'アーカイブ') {
                     categoryBadgeStr = `<span class="text-xs font-bold text-white bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700 shadow-sm flex items-center gap-1"><i data-lucide="lock" class="w-3 h-3"></i>${v.category}</span>`;
                 }
 
