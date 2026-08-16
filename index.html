@@ -103,10 +103,9 @@
         const loadingMsg = document.getElementById('loading-msg');
         const paginationEl = document.getElementById('pagination-controls');
 
-        async function fetchVideos() {
+async function fetchVideos() {
             loadingMsg.style.display = 'flex';
             
-            // パスワードごとにキャッシュを分ける（パスワードなしなら通常のキャッシュ、ありなら別キャッシュ）
             const userPass = secretPassEl.value.trim();
             const cacheKey = 'takarabune_youtube_videos_cache_' + (userPass || 'public');
             
@@ -123,8 +122,17 @@
             }
 
             try {
-                // パスワードをGASに送る（&pass=...）
-                const res = await fetch(`${GAS_URL}?token=${SECRET_TOKEN}&pass=${encodeURIComponent(userPass)}`, {
+                // ★ここがPOST通信への変更点！★
+                const res = await fetch(GAS_URL, {
+                    method: 'POST',
+                    headers: {
+                        // GAS特有のCORSエラーを回避する定石（text/plainで送る）
+                        'Content-Type': 'text/plain',
+                    },
+                    body: JSON.stringify({
+                        token: SECRET_TOKEN,
+                        pass: userPass
+                    }),
                     redirect: 'follow'
                 });
                 const data = await res.json();
@@ -136,6 +144,7 @@
                 
                 let fetchedVideos = data.filter(v => v.date); 
                 
+                // --- 以下、既存のコードと同じ ---
                 fetchedVideos.forEach(v => {
                     if (v.date) {
                         const d = new Date(v.date);
@@ -172,7 +181,7 @@
                 }
             }
         }
-
+        
         function updateFilterOptions() {
             // カテゴリーの表示順ルール
             const categoryOrder = ['稽古', '所望踊り確認', '本番', '囃子変遷', 'アーカイブ'];
