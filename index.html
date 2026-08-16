@@ -10,15 +10,22 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
     <div class="max-w-5xl mx-auto p-4 sm:p-6">
-        <header class="bg-indigo-600 text-white rounded-2xl p-6 shadow-md mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    
+    <!-- ★ IDを追加し、色の変化をフワッとさせる(transition) -->
+        <header id="main-header" class="bg-indigo-600 transition-colors duration-500 text-white rounded-2xl p-6 shadow-md mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
                 <h1 class="text-2xl sm:text-3xl font-bold flex items-center gap-2">
                     <i data-lucide="video" class="w-8 h-8"></i>
                     宝船 稽古動画検索
+                    
+                    <!-- ★ ここにアンロック時だけ表示されるバッジを仕込む -->
+                    <span id="unlock-badge" class="hidden text-xs sm:text-sm font-bold bg-amber-500 text-amber-50 px-3 py-1 rounded-lg items-center gap-1 ml-2 shadow-sm animate-pulse">
+                        <i data-lucide="unlock" class="w-4 h-4"></i> 限定公開データ表示中
+                    </span>
                 </h1>
             </div>
         </header>
-
+        
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
             <!-- 左側：検索フィルター -->
             <div class="md:col-span-1 space-y-4">
@@ -103,7 +110,7 @@
         const loadingMsg = document.getElementById('loading-msg');
         const paginationEl = document.getElementById('pagination-controls');
 
-async function fetchVideos() {
+        async function fetchVideos() {
             loadingMsg.style.display = 'flex';
             
             const userPass = secretPassEl.value.trim();
@@ -141,6 +148,30 @@ async function fetchVideos() {
                     alert('アクセスが拒否されました。設定を確認してください。');
                     return;
                 }
+                
+                // --- ここから追加：アンロック演出 ---
+                // ★ 取得したデータの中に隠しカテゴリーがあるかチェック
+                const TARGET_CATEGORY = 'アーカイブ'; // ※のりの環境の隠しカテゴリー名に合わせる！
+                const hasSecret = fetchedVideos.some(v => v.category === TARGET_CATEGORY);
+                
+                const headerEl = document.getElementById('main-header');
+                const unlockBadge = document.getElementById('unlock-badge');
+                const passInput = document.getElementById('secret-pass');
+
+                if (hasSecret) {
+                    // 【裏モード】ヘッダーをダークブルーにして、バッジを表示、パスワード欄を光らせる
+                    headerEl.classList.remove('bg-indigo-600');
+                    headerEl.classList.add('bg-slate-800');
+                    unlockBadge.style.display = 'inline-flex';
+                    passInput.classList.add('border-amber-500', 'bg-amber-50', 'text-amber-700');
+                } else {
+                    // 【通常モード】元に戻す
+                    headerEl.classList.add('bg-indigo-600');
+                    headerEl.classList.remove('bg-slate-800');
+                    unlockBadge.style.display = 'none';
+                    passInput.classList.remove('border-amber-500', 'bg-amber-50', 'text-amber-700');
+                }
+                // --- ここまで追加 ---
                 
                 let fetchedVideos = data.filter(v => v.date); 
                 
